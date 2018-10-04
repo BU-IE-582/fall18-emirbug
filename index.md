@@ -2,7 +2,7 @@
 
 ## Week 0 (September 19)
 
-[Here](files/example_homework_0.html) is my 5 interesting R examples
+[Here](http://htmlpreview.github.io/?https://github.com/BU-IE-582/fall18-emirbug/blob/master/files/example_homework_0.html) is my 5 interesting R examples
 
 
         
