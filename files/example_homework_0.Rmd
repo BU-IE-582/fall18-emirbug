@@ -1,0 +1,35 @@
+---
+title: "Interesting R Examples"
+author: Emirhan Bugday - IE582 - Fall 2018
+---
+```{r,echo=FALSE,results="hide"}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r,echo=FALSE,eval=FALSE}
+rmarkdown::render("/home/baydogan/Courses/IE582/Fall18/Guidelines/example_homework_0.Rmd",output_format="pdf_document")
+rmarkdown::render("/home/baydogan/Courses/IE582/Fall18/Guidelines/example_homework_0.Rmd",output_format="html_document")
+```
+
+
+
+1.[DeepJazz](https://github.com/jisungk/deepjazz)
+  
+  The aim of this project, which is developed in 36 hours at a hackathon, is to reproduce jazz music using deep learning. It is coded on python and it uses two deep learning libraries: Keras and Theano. Briefly, it gets MIDI (Musical Instrument Digital Interface) file and builds two layers of LSTM (Long Short-Term Memory), which is a Recurrent Neural Network with a modified design, in order to create artificial music. 
+  
+2.[Improving Traffic Safety in Jakarta Through Video Analysis](https://dssg.uchicago.edu/2018/09/19/improving-traffic-safety-in-jakarta/)
+
+  In Jakarta, almost 2000 people die annually due to traffic accidents. Although, city government has invested a lot to cope with this issue, they failed due to lack of man power. In order to reduce traffic accidents, and related injuries, this project is started. The aim is to abstract useful information to the public officials via analyzing to traffic cameras. Raw traffic video footage is  used as an input to detect and classify objects, estimate directions and movement and understand the context of the scene. Together with the collusion weather they try to identify and assess traffic risks.
+    
+3.[Semantic Question Matching with Deep Learning](https://engineering.quora.com/Semantic-Question-Matching-with-Deep-Learning)
+
+  In this example, a Machine Learning and Natural Language Processing system is developed to detect the duplicate Quora questions. This is an important issue for Quora to maintain it's high-quality knowledge base. With the exponential increase of the data, monitoring and auditing with manual power became impossible. Thus, need for an automated identification/classification system is inevitable, especially for text based data. Quora open its matched 400,000 question to public, for people to train and come with a solution. This is a good example to address the issue and also recognized by the Quare. Three methods are implemented in this project: LSTM with concatenation, LSTM with distance and angle and Decomposable attention which is an attention-based approach from Google Research and Keras package of R is used.
+
+4.[Not Hotdog](http://blog.revolutionanalytics.com/2018/09/not-hotdog-a-shiny-app-using-the-custom-vision-api.html)
+
+  A funny example: an application for deciding whether the object in the picture is a hot dog or not:) The reason I choose this example is that it shows how easy to build an image recognition application using Shiny, R. In the example, a Shinny App is build and connected to a Custom Vision API with a few lines of code using httr, another R package. 
+  
+5.[Personalised Medicine - EDA with tidy R](https://www.kaggle.com/headsortails/personalised-medicine-eda-with-tidy-r)  
+
+  This a kaggle competition project and the aim is to take personalized medicine to its full potential in order to redefine the cancer treatment. In the example a comprehensive explaratory data analysis is provided by using the following r packages: tidyverse and ggplot2
