@@ -1,0 +1,382 @@
+---
+title: 'Bookmakers Odd Estimation Analysis'
+author: "Emirhan Bugday"
+date: "October 18, 2018"
+output:
+  html_document:
+    toc: yes
+    toc_float: 
+      collapsed: yes
+    theme: simplex
+    highlight: tango
+---
+
+```{r, echo = F}
+library(data.table)
+
+# Set working directory and folder paths
+setwd("C:\\Users\\emirhan.bugday\\Desktop\\IE 582\\HW-1")
+load("Result.RData")
+
+```
+
+
+## Introduction
+
+This document is the report of the IE 582 Homework 2. The report is organized as follows: In Chapter 2, data manipulation steps regarding cleaning/tidying the provided data sets and the process of obtaining necessary information are explained. In Chapter 3, bin selection process is described. Finally, in Chapter 4, obtained results for Task 1 and Task 2 are provided, respectively.
+
+
+
+## Data Manipulation
+
+### Data Cleaning
+
+After acquiring data sets, **Matches** and **Odds**, before performing any operation, I check data types, overall statistics and ensure there is no duplicate records. Duplicate records are detected in Matches and they are removed from the data set. While checking  the uniqueness of the data sets, *matchId* is controlled for **Matches**  and *matchId, betType, oddtype, bookmaker, date* and *totalhandicap* is controlled for **Odds**. 
+
+Then, I truncate data sets in order to deal with a smaller data with respect to the problem settings as follows:
+
+**1)** Filter out *betType* != *"ou"* & *totalhandicap* != 2.5 from the **Odds** since we are only interested in over/ under bet type with 2.5 handicap.
+
+**2)** Eliminate matches which are not present in **Odds** data set, if there any, since they will be redundant.
+
+**3)** Eliminate matches which are not started yet, since we won't be able to include them in our analysis.
+
+**4)** Then eliminate the matches from **Odds** data which are not contained in the remaining **Matches** data.
+
+**5)** Convert *"Unix Epoct Time"* to time using anytime
+
+Normally, step 2 & 4 will be handled implicitly when merging **Odds** and **Matches**. The reason I prefer to do such truncation operations separately at the beginning, is to obtain the smallest with no loss of relevant. 
+
+### Calculations
+The following steps are done to extract the necessary information to complete tasks:
+
+**1)** Determine total score of the matches by subtracting individual scores from the score column
+```{r eval=F}
+Matches[, TotalScore := as.numeric(tstrsplit(score, ":")[[1]]) + as.numeric(tstrsplit(score, ":")[[2]])]
+```
+
+**2)** Flag matches if its ended "over" according to handicap = 2.5
+```{r eval=F}
+Matches[TotalScore > 2.5, IsOver := 1]
+Matches[is.na(IsOver), IsOver := 0]
+```
+**3)** Subtract year info of the matches from date column
+
+**4)** Merge the Odds and Matches with respect to *"matchId"*. Note that, since uncommon values were eliminated at the beginning, the number of rows are preserved with this inner join operation.
+
+**5)** Determine the initial and the final odds provided by a bookmaker for a match (Note it is also controlled that if there exist two types of bets for each match for each book marker. However I didn't encounter any missing odd, if there were I would remove that bet).
+```{r eval=F}
+Odds[, `:=` (MinDate = min(date), MaxDate = max(date)), list(matchId, bookmaker, oddtype)]
+Odds <- rbind(cbind(Odds[date == MinDate], Period = "initial"), cbind(Odds[date == MaxDate], Period = "final"))
+```
+**6)** Calculate implied probabilities for the initial odds as the follows:
+```{r eval=F}
+Odds[, NormalizationTerm := 1 /sum(1/odd), list(matchId, bookmaker, Period)]
+Odds[, ImpliedProbs := (1/odd) * NormalizationTerm]
+```
+```{r}
+summary(Odds[oddtype == "over"]$ImpliedProbs)
+```
+
+
+## Bin Selection {.tabset .tabset-fade}
+
+There are 26 distinct bookmakers and I decided to choose the top 7 of them in terms of the total bets they offer. 
+```{r  echo=F}
+bookmarkers[1:7]$bookmaker
+```
+
+In order to decide bins, first, I observe the histograms of the *Implied Probabilities* of bookmakers (All and some individual histograms are provided below).. As can be clearly seen from the histograms, as well as the summary reported above, there are a few points on the tails. After some iteration I finalized the number of bins and their size.
+
+At the 7 bins are selected which are: **([0.35, 0.45], (0.45, 0.48], (0.48, 0.52], (0.51, 0.54], (0.54, 0.57], (0.57, 0.60],  (0.60, 0.75])** More, frequency of the odds mapped in bins are also observed via histogram for both initial and final odds which are seem to be distributed fine (Also reported below).
+
+
+### All Selected Bookmakers
+```{r  echo=FALSE}
+hist(SelectedOdds[Period == "initial"]$ImpliedProbs, breaks = 50, xlab = "Implied Probabilities", main = "Histogram of All Implied Probabilities")
+```
+
+### bet365
+```{r  echo=FALSE}
+hist(SelectedOdds[Period == "initial"][bookmaker == "bet365"]$ImpliedProbs, breaks = 50, xlab = "Implied Probabilities", main = "Histogram of bet365's Implied Probabilities")
+```
+
+### BetSafe
+```{r  echo=FALSE}
+hist(SelectedOdds[Period == "initial"][bookmaker == "Betsafe"]$ImpliedProbs, breaks = 50, xlab = "Implied Probabilities", main = "Histogram of BetSafe's Implied Probabilities")
+```
+
+### Interwerten
+```{r  echo=FALSE}
+hist(SelectedOdds[Period == "initial"][bookmaker == "Interwetten"]$ImpliedProbs, breaks = 50, xlab = "Implied Probabilities", main = "Histogram of Interwerten's Implied Probabilities")
+```
+
+### Selected Bins 
+
+#### Initial Odd Distribution
+```{r  echo=FALSE}
+hist(SelectedOdds[Period == "initial"]$Bin, xlab = "Implied Probabilities", main = "Histogram of Initial Odds over Selected Bins")
+```
+
+#### Final Odd Distribution
+```{r  echo=FALSE}
+hist(SelectedOdds[Period == "final"]$Bin, xlab = "Implied Probabilities", main = "Histogram of Final Odds over Selected Bins")
+```
+
+
+
+## Results
+
+### Task 1 - A {.tabset .tabset-fade}
+*bet-at-home* seems to be the best among the top 7 of the bookmakers in terms of decision quality. On the other hand, for the bins greater than 0.5 *BestSafe* is also make good decision about deciding over/under odds predicts. The rest of the bookmakers deviate a lot from the abline(x=y) than the above mentioned two bookmakers. However, we can still mention a pattern, especially for the bins 2-3-4 the majority of the bookmakers has a smaller implied probability than the actual factional probability.
+
+Once we shift to the final odds, *bet-at-home* loses its success rate along with *BestSafe*. In this case, all bookmakers are much more close to each other when compared to the initial odds. 
+
+Another obvious observation is all bookmakers constantly imply higher probabilities to either initial or final odd than the actual ones.
+
+
+#### Initial Odds
+```{r echo=F}
+c <- 2
+w <- 1
+p <- 1
+
+plot(Findinds[bookmaker == bookmarkers[1]$bookmaker & Period == "initial"]$AvgImpliedProb, 
+     Findinds[bookmaker == bookmarkers[1]$bookmaker & Period == "initial"]$Fraction, 
+     xlim = c(0.35,0.7), ylim = c(0.35,0.7), col = c, lwd = w, pch = p,
+     xlab = "Average Implied Probabilities",
+     ylab = "Actual Fraction of the Games")
+
+abline(v = 0.45, col = "orange", lty = 2)
+abline(v = 0.48, col = "orange", lty = 2)
+abline(v = 0.51, col = "orange", lty = 2)
+abline(v = 0.54, col = "orange", lty = 2)
+abline(v = 0.57, col = "orange", lty = 2)
+abline(v = 0.60, col = "orange", lty = 2)
+abline(a=0,b=1,col=1,lwd=1, lty = 2)
+title("Bookmarkers Implied Probability Quality")
+
+for (bm in bookmarkers[2:7]$bookmaker) {
+  c <- c + 1
+  p <- p + 1
+  points(Findinds[bookmaker == bm & Period == "initial"]$AvgImpliedProb, 
+         Findinds[bookmaker == bm & Period == "initial"]$Fraction, 
+         col = c, lwd = w, pch = p) 
+  
+}
+legend("topleft", legend=c(bookmarkers[1:7]$bookmaker)
+       ,col = c(1:7), pch = c(1:7), bg = ("white"), horiz = F, cex = 0.7) 
+
+```
+
+
+#### Final Odds
+```{r echo=F}
+c <- 2
+w <- 1
+p <- 1
+
+plot(Findinds[bookmaker == bookmarkers[1]$bookmaker & Period == "final"]$AvgImpliedProb, 
+     Findinds[bookmaker == bookmarkers[1]$bookmaker & Period == "final"]$Fraction, 
+     xlim = c(0.35,0.7), ylim = c(0.35,0.7), col = c, lwd = w, pch = p,
+     xlab = "Average Implied Probabilities",
+     ylab = "Actual Fraction of the Games")
+
+abline(v = 0.45, col = "orange", lty = 2)
+abline(v = 0.48, col = "orange", lty = 2)
+abline(v = 0.51, col = "orange", lty = 2)
+abline(v = 0.54, col = "orange", lty = 2)
+abline(v = 0.57, col = "orange", lty = 2)
+abline(v = 0.60, col = "orange", lty = 2)
+abline(a=0,b=1,col=1,lwd=1, lty = 2)
+title("Bookmarkers Implied Probability Quality")
+
+for (bm in bookmarkers[2:7]$bookmaker) {
+  c <- c + 1
+  p <- p + 1
+  points(Findinds[bookmaker == bm & Period == "final"]$AvgImpliedProb, 
+         Findinds[bookmaker == bm & Period == "final"]$Fraction, 
+         col = c, lwd = w, pch = p) 
+  
+}
+legend("topleft", legend=c(bookmarkers[1:7]$bookmaker)
+       ,col = c(1:7), pch = c(1:7), bg = ("white"), horiz = F, cex = 0.7) 
+
+```
+
+### Task 1 - B {.tabset .tabset-fade}
+1st bookmaker, *bet365* is selected to analyze its yearly performance. Each Bin is plotted in different tab.
+
+It is observed that, bookmaker has a standard for a bin which relies between the yearly movements of actual fractions. In other words, although actual values fluctuate, bookmaker implied probabilities doesn't move much throughout years. It seems like they position their probabilities to the yearly mean of that bin except bin 3. In bin 3 they perform constantly deviated from the actual.
+
+#### [0.35, 0.45]
+```{r echo= F}
+plot(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 1]$Year, 
+     YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 1]$Fraction,
+     xlab = "Years",
+     ylab = "Probabilities",
+     type = "l", ylim = c(0.25,0.80), col = 3, lwd = 2)
+
+lines(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 1]$Year, 
+      YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 1]$AvgImpliedProb, 
+      col = 4, lwd = 2)
+
+title("Yearly Comparison for Bin 1")
+
+legend("topleft", legend=c("Actual Fractions", "Implied Probabilities")
+       ,col = c(3:4), pch = c(1:2), bg = ("white"), horiz = F, cex = 0.7) 
+```
+
+#### (0.45 - 0.48]
+```{r echo= F}
+plot(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 2]$Year, 
+     YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 2]$Fraction,
+     xlab = "Years",
+     ylab = "Probabilities",
+     type = "l", ylim = c(0.25,0.80), col = 3, lwd = 2)
+
+lines(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 2]$Year, 
+      YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 2]$AvgImpliedProb, 
+      col = 4, lwd = 2)
+
+title("Yearly Comparison for Bin 2")
+
+legend("topleft", legend=c("Actual Fractions", "Implied Probabilities")
+       ,col = c(3:4), pch = c(1:2), bg = ("white"), horiz = F, cex = 0.7) 
+```
+
+#### (0.48 - 0.51] 
+```{r echo= F}
+plot(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 3]$Year, 
+     YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 3]$Fraction,
+     xlab = "Years",
+     ylab = "Probabilities",
+     type = "l", ylim = c(0.25,0.80), col = 3, lwd = 2)
+
+lines(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 3]$Year, 
+      YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 3]$AvgImpliedProb, 
+      col = 4, lwd = 2)
+
+title("Yearly Comparison for Bin 3")
+
+legend("topleft", legend=c("Actual Fractions", "Implied Probabilities")
+       ,col = c(3:4), pch = c(1:2), bg = ("white"), horiz = F, cex = 0.7) 
+```
+
+#### (0.51 - 0.54]
+```{r echo= F}
+plot(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 4]$Year, 
+     YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 4]$Fraction,
+     xlab = "Years",
+     ylab = "Probabilities",
+     type = "l", ylim = c(0.25,0.80), col = 3, lwd = 2)
+
+lines(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 4]$Year, 
+      YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 4]$AvgImpliedProb, 
+      col = 4, lwd = 2)
+
+title("Yearly Comparison for Bin 4")
+
+legend("topleft", legend=c("Actual Fractions", "Implied Probabilities")
+       ,col = c(3:4), pch = c(1:2), bg = ("white"), horiz = F, cex = 0.7) 
+```
+
+#### (0.54 - 0.57]
+```{r echo= F}
+plot(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 5]$Year, 
+     YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 5]$Fraction,
+     xlab = "Years",
+     ylab = "Probabilities",
+     type = "l", ylim = c(0.25,0.80), col = 3, lwd = 2)
+
+lines(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 5]$Year, 
+      YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 5]$AvgImpliedProb, 
+      col = 4, lwd = 2)
+
+title("Yearly Comparison for Bin 5")
+
+legend("topleft", legend=c("Actual Fractions", "Implied Probabilities")
+       ,col = c(3:4), pch = c(1:2), bg = ("white"), horiz = F, cex = 0.7) 
+```
+
+#### (0.57 - 0.60]
+```{r echo= F}
+plot(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 6]$Year, 
+     YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 6]$Fraction,
+     xlab = "Years",
+     ylab = "Probabilities",
+     type = "l", ylim = c(0.25,0.80), col = 3, lwd = 2)
+
+lines(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 6]$Year, 
+      YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 6]$AvgImpliedProb, 
+      col = 4, lwd = 2)
+
+title("Yearly Comparison for Bin 6")
+
+legend("topleft", legend=c("Actual Fractions", "Implied Probabilities")
+       ,col = c(3:4), pch = c(1:2), bg = ("white"), horiz = F, cex = 0.7) 
+```
+
+#### (0.60 - 0.75]
+```{r echo= F}
+plot(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 7]$Year, 
+     YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 7]$Fraction,
+     xlab = "Years",
+     ylab = "Probabilities",
+     type = "l", ylim = c(0.25,0.80), col = 3, lwd = 2)
+
+lines(YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 7]$Year, 
+      YearBased[ bookmaker == bookmarkers[1]$bookmaker & Period == "initial" & Bin == 7]$AvgImpliedProb, 
+      col = 4, lwd = 2)
+
+title("Yearly Comparison for Bin 7")
+
+legend("topleft", legend=c("Actual Fractions", "Implied Probabilities")
+       ,col = c(3:4), pch = c(1:2), bg = ("white"), horiz = F, cex = 0.7) 
+```
+
+
+
+
+
+
+
+### Task 2
+For this task, we need to change the step 1, described in  Data Cleaning part, as *betType* = *1x2* and re-prepare the data. In terms of classification problems, we can say that there is a difference between the *game result* bet type and *over/under* bet type since *game result* has 3 possible while *over/under* has 2. Thus we also have to change 1 & 2 steps of the Calculation part. I did calculate data for *game result* bets with the above mentioned changes in another script, and feed only the final data as .rds.
+
+Lets use the same approach with Task 1 and calculate implied probabilities from odds and map them to bins, and calculate the actual fraction to that bin. In addition, lets show initial and final odds on the same graph to analyze bookmakers strategy about odd changes with respect to bins. I choose the top bookmaker to demonstrate the idea. Greens are final odds and red ones are initial odds. We can see that the implied probability of odd1 is on the average increases for bins 7, 8 & 9. Which might led an idea that, if this is a general case, for those bets odds will be decrease, since probability increases. If that shift is too much and it is a regular action that can be detected, then betting beforehand to the bets corresponds to those bin might be meaningful due to the opportunity cost (if there is an enough shift) 
+
+
+
+
+```{r echo=F}
+Findinds2 <- readRDS("task2U.rds")
+plot(Findinds2$AvgInit, 
+     Findinds2$Fraction, 
+     xlim = c(0.1,0.9), ylim = c(0.1,0.9), col = 2, lwd = 2, pch = 1,
+     xlab = "Average Implied Probabilities",
+     ylab = "Actual Fraction of the Games")
+
+points(Findinds2$AvgFin, 
+       Findinds2$Fraction, 
+       col = 3, lwd = 2, pch = 3) 
+
+
+abline(v = 0.20, col = "orange", lty = 2)
+abline(v = 0.30, col = "orange", lty = 2)
+abline(v = 0.40, col = "orange", lty = 2)
+abline(v = 0.45, col = "orange", lty = 2)
+abline(v = 0.50, col = "orange", lty = 2)
+abline(v = 0.55, col = "orange", lty = 2)
+abline(v = 0.60, col = "orange", lty = 2)
+abline(v = 0.75, col = "orange", lty = 2)
+
+
+abline(a=0,b=1,col=1,lwd=1, lty = 2)
+title("Initial & Final Odd1 Change w.r.t. Bins")
+
+
+legend("topleft", legend=c("initial", "final")
+       ,col = c(2,3), pch = c(1,3), bg = ("white"), horiz = F, cex = 0.7) 
+```
+
