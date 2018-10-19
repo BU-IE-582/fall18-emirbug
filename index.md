@@ -6,7 +6,7 @@
 
 ## Week 4 (October 18)
 
-[Here](http://htmlpreview.github.io/?https://github.com/BU-IE-582/fall18-emirbug/blob/master/files/homework_1.html) is my Odd Analysis.
+[Here](files/homework_1.html) is my Odd Analysis.
 
         
       
