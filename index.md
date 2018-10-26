@@ -10,7 +10,7 @@
 
 ## Week 5 (October 26)
 
-[Here](files/Homework_2.html) is my PCA Analysis.
+[Here](files/Homework_2.html) is my PCA Analysis. Source code is embeded in Rmd file. 
 
 
         
