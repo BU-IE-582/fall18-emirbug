@@ -1,0 +1,476 @@
+---
+title: "PCA-MDS Analysis"
+author: "Emirhan Bugday"
+date: "October 26, 2018"
+output: 
+  html_document:
+    highlight: tango
+    theme: simplex
+    toc: yes
+    toc_float:
+      collapsed: yes
+---
+
+```{r, echo = F, results = F, warning=F, message=F}
+library(data.table)
+library(anytime)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(rgl)
+library(jpeg)
+require(grDevices)
+
+# Set working directory and folder paths
+setwd("G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-2")
+
+# Read dataset
+Matches <- as.data.table(readRDS("df9b1196-e3cf-4cc7-9159-f236fe738215_matches.rds"))
+Odds <- as.data.table(readRDS("df9b1196-e3cf-4cc7-9159-f236fe738215_odd_details.rds"))
+
+```
+
+# Preprocess
+
+## A. Observe & Clean Datasets
+
+1. Observe data types and overall summary of the datasets
+```{r, echo = F, results = F, warning=F, message=F}
+str(Matches)
+str(Odds)
+summary(Odds)
+summary(Matches)
+```
+
+2. Check duplicate values and remove them if there are any
+```{r, echo = F, results = F, warning=F, message=F}
+
+if (dim(unique(Odds))[1] < dim(Odds)[1]) {
+  Odds[, RowCount := c(1:.N), list(matchId, betType, oddtype, bookmaker, date, totalhandicap)]
+  Odds <- Odds[RowCount == 1]
+  Odds[, RowCount := NULL]
+} 
+
+if (dim(unique(Matches))[1] < dim(Matches)[1]) {
+  Matches[, RowCount := c(1:.N), list(matchId)]
+  Matches <- Matches[RowCount == 1]
+  Matches[, RowCount := NULL]
+} 
+```
+
+
+3. Eliminate matches which are not started yet, since we won't be able to include them in our analysis
+```{r, echo = F, results = F, warning=F, message=F}
+Matches <- Matches[!is.na(score)]
+```
+
+4. Eliminate the matches from Odds table which are not contained in the remaining Matches dataset
+```{r, echo = F, results = F, warning=F, message=F}
+Odds <- Odds[matchId %in% unique(Matches$matchId)]
+```
+
+5. Convert Unix Epoct Time to Date
+```{r, echo = F, results = F, warning=F, message=F}
+Matches$date <- anytime::anytime(Matches$date)
+str(Matches)
+Odds$date <- anytime::anytime(Odds$date)
+str(Odds)
+```
+
+6. Acquire the final odds for each bookmaker for each betType - totalhandicap pair
+```{r, echo = F, results = F, warning=F, message=F}
+Odds[order(matchId, bookmaker, betType, totalhandicap, oddtype), 
+     rowNumber := c(.N:1), list(matchId, bookmaker, betType, totalhandicap, oddtype)]
+Odds <- Odds[rowNumber == 1]
+```
+
+## B. Bookmaker Selection 
+
+In this part I aim to detect the bookmakers that will be inclueded in my analysis. To do so, I follow the following steps:
+
+1. Calculate the number of betType - totalhandicap pair provided by each bookmaker
+```{r, echo = F, results = F, warning=F, message=F}
+bookmarkerInfo <- unique(Odds[, .(bookmaker, betType, totalhandicap)])[, .(BetTypeCount = .N), bookmaker]
+```
+
+2. Then check the common match counts for different set of bookmakers
+```{r, echo = F, results = T, warning=F, message=F}
+for(b in c(5:10)){
+
+Temp<- Odds[bookmaker %in% bookmarkerInfo[order(- BetTypeCount)][1:b]$bookmaker,
+                    .(BookmarkerCount = length(unique(bookmaker))), list(matchId, betType, totalhandicap)]
+
+print(paste0(length(unique(Temp[BookmarkerCount == b]$matchId)), " Common Matches for ", b , 
+             " number of selected bookmakers, which are:")) 
+print(paste0(bookmarkerInfo[order(- BetTypeCount)][1:b]$bookmaker, collapse = ", "))
+print("-----------------------------------------------------------------")
+}
+```
+
+As a result I decide to conduct my analysis with 8 bookmakers since there is no big difference with 7 in terms of common matches.
+
+## C. betType - totalhandicap pair Selection
+The objective of this part has the same notion with the previous part.
+
+
+1. Calculate common match count for of betType - totalhandicap pairs for the selected 8 bookmakers
+```{r, echo = F, results = F, warning=F, message=F}
+b <- 8
+SelectedBets<- Odds[bookmaker %in% bookmarkerInfo[order(- BetTypeCount)][1:b]$bookmaker, .(BookmarkerCount = length(unique(bookmaker)))
+                    , list(matchId, betType, totalhandicap)][BookmarkerCount == b][, .(MatchCount = .N), list(betType, totalhandicap)]
+
+SelectedBets <- SelectedBets[order(-MatchCount),]
+```
+
+2. Then check the common complete cases for different set of betType - totalhandicap pairs
+```{r, echo = F, results = T, warning=F, message=F}
+for (p in c(1:7)) {
+  
+  SelectedOdds <- merge(Odds[bookmaker %in% bookmarkerInfo[order(- BetTypeCount)][1:b]$bookmaker], 
+                        SelectedBets[MatchCount >= SelectedBets[p]$MatchCount], 
+                        by = c("betType", "totalhandicap"))
+  
+  Temp <- dcast(data = SelectedOdds[,.(matchId, betType, oddtype, bookmaker, totalhandicap, odd)],
+                formula = matchId ~ bookmaker + betType + totalhandicap + oddtype + totalhandicap, value.var = "odd")
+  
+  Temp <- Temp[complete.cases(Temp)]
+  
+  print(paste0(dim(Temp[complete.cases(Temp)])[1], " Comple Cases for total number of ", p , 
+               "betType-totalhandicap pair"))
+  # print(paste0(SelectedBets[1:b, pair := paste0(betType," - ", totalhandicap)]$pair, collapse = ", "))
+  print("-----------------------------------------------------------------")
+  
+}
+```
+AS a result I observe huge decrease when the selected number of pairs increased from 2 to 3. However, selecting 3 pairs will create a higher feature dimension which will be beneficial to observe the PCA for this assignment. (or the additional betType may be better in terms of classifying the game results)
+
+
+## D. Finalize and spread the Odd data set
+According to the bookmaker & betType- totalhandicap pair Selection I've decided to conduct my analysis with two alternatives: 
+
+1. 8 Bookmakers and 2 betType- totalhandicap pair
+2. 8 Bookmakers and 3 betType- totalhandicap pair
+
+to observe different situations.
+
+
+```{r, echo = F, results = F, warning=F, message=F}
+# Select the first 8 Bookmakers and 2 betType- totalhandicap pair
+p <- 2
+SelectedOdds2 <- merge(Odds[bookmaker %in% bookmarkerInfo[order(- BetTypeCount)][1:b]$bookmaker], 
+                      SelectedBets[MatchCount >= SelectedBets[p]$MatchCount], 
+                      by = c("betType", "totalhandicap"))
+
+
+SelectedOdds2[, m := mean(odd), list(betType, totalhandicap, bookmaker)]
+SelectedOdds2[, sd := sd(odd), list(betType, totalhandicap, bookmaker)]
+SelectedOdds2[, odd := (odd - m)/sd]
+summary(SelectedOdds2)
+
+
+FinalOdds2 <- dcast(data = SelectedOdds2[,.(matchId, betType, oddtype, bookmaker, totalhandicap, odd)],
+                   formula = matchId ~ bookmaker + betType + totalhandicap + oddtype + totalhandicap, value.var = "odd")
+
+
+FinalOdds2 <- FinalOdds2[complete.cases(FinalOdds2)]
+
+# Select the first 8 Bookmakers and 3 betType- totalhandicap pair
+p <- 3
+SelectedOdds3 <- merge(Odds[bookmaker %in% bookmarkerInfo[order(- BetTypeCount)][1:b]$bookmaker], 
+                       SelectedBets[MatchCount >= SelectedBets[p]$MatchCount], 
+                       by = c("betType", "totalhandicap"))
+
+SelectedOdds3[, m := mean(odd), list(betType, totalhandicap, bookmaker)]
+SelectedOdds3[, sd := sd(odd), list(betType, totalhandicap, bookmaker)]
+SelectedOdds3[, odd := (odd - m)/sd]
+
+FinalOdds3 <- dcast(data = SelectedOdds3[,.(matchId, betType, oddtype, bookmaker, totalhandicap, odd)],
+                    formula = matchId ~ bookmaker + betType + totalhandicap + oddtype + totalhandicap, value.var = "odd")
+
+
+FinalOdds3 <- FinalOdds3[complete.cases(FinalOdds3)]
+```
+
+
+
+## E. Calculate Match Results
+
+
+1. Determine total score of the matches by subtracting individual scores from the score column
+```{r, echo = F, results = F, warning=F, message=F}
+Matches[, `:=` (HomeScore = as.numeric(tstrsplit(score, ":")[[1]]), AwayScore = as.numeric(tstrsplit(score, ":")[[2]]))]
+```
+
+2. Flag matches if its ended "over" according to handicap = 2.5
+```{r, echo = F, results = F, warning=F, message=F}
+Matches[HomeScore + AwayScore > 2.5, IsOver := 1]
+Matches[is.na(IsOver), IsOver := 0]
+summary(Matches)
+```
+
+3. Flag match results according to home & away scores
+```{r, echo = F, results = F, warning=F, message=F}
+Matches[HomeScore > AwayScore, GameResult := 1]
+Matches[HomeScore < AwayScore, GameResult := 2]
+Matches[HomeScore == AwayScore, GameResult := 0]
+summary(Matches)
+```
+
+4. Merge neccesary info from the Matches dataset with the Odds dataset
+```{r, echo = F, results = F, warning=F, message=F}
+FinalOdds2 <- merge(Matches[, .(matchId, IsOver, GameResult)], FinalOdds2, by = "matchId")
+FinalOdds3 <- merge(Matches[, .(matchId, IsOver, GameResult)], FinalOdds3, by = "matchId")
+```
+
+# Task 1-2 Results
+
+## PCA Analysis for 2 pairs
+```{r, echo = F, results = F, warning=F, message=F}
+cor(FinalOdds2[,c(4:43),with=F])
+PCA = princomp(FinalOdds2[,c(4:43),with=F],cor=T)
+```
+
+```{r, echo = F, results = T, warning=F, message=F}
+par(mfrow=c(1,1))
+plot(PCA)
+```
+
+**It seems the first 3 componen explains almost 90 percent of the variance. To better look we can check the summary of the PCA.**
+
+```{r, echo = F, results = T, warning=F, message=F}
+summary(PCA)
+```
+
+```{r, echo = F, results = T, warning=F, message=F}
+par(mfrow=c(1,2))
+# Plot Over/Under
+plot(PCA$scores[,1],PCA$scores[,2],col=FinalOdds2$IsOver+11,pch=".",cex=7, xlab = "Comp1", ylab = "Comp2") 
+title("PCA (over/under)")
+legend("topright", legend=c("Over", "Under")
+       ,col = c(12:11), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+
+# Plot Game Result
+plot(PCA$scores[,1],PCA$scores[,2],col=FinalOdds2$GameResult+25,pch=".",cex=7, xlab = "Comp1", ylab = "Comp2") 
+title("PCA (Game Result)")
+legend("topright", legend=c("Tie", "Home", "Away")
+       ,col = c(25:27), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+
+# 3D PCA - over/under
+# plot3d(PCA$scores[,1:3],col=FinalOdds2$IsOver+11,pch=".",cex=7)
+# 3D PCA - game result
+# plot3d(PCA$scores[,1:3],col=FinalOdds2$GameResult+25,pch=".",cex=7)
+
+```
+
+**Once we observe the seperation between the classes, selected components(existing features) are not capable for a good classification of over and under results. However, we can observe slightly better seperation for game results, especially for away result.**
+
+
+## MDS Analysis for 2 pairs
+MDS analtyis is conducted with the following steps:
+
+1. Calculate Manhattan Distance
+```{r, echo = F, results = F, warning=F, message=F}
+Manhattan <- dist(FinalOdds2[,c(4:43),with=F], method = "manhattan", diag = TRUE, upper = TRUE)
+```
+
+2. Calculate Euclidean Distance
+```{r, echo = F, results = F, warning=F, message=F}
+Euclidean <- dist(FinalOdds2[,c(4:43),with=F], method = "euclidean", diag = TRUE, upper = TRUE)
+```
+
+3. Create MDS for each distance
+```{r, echo = F, results = F, warning=F, message=F}
+mds_mh = cmdscale(Manhattan)
+mds_eu = cmdscale(Euclidean)
+```
+
+```{r, echo = F, results = T, warning=F, message=F}
+par(mfrow=c(1,2))
+# Plot Manhattan
+plot(mds_mh[,1], mds_mh[,2], main='MDS (Manhattan)', col = FinalOdds2$IsOver + 11, pch = "." , cex = 7, xlab = "Dist1", ylab = "Dist2")
+legend("topright", legend=c("Over", "Under")
+       ,col = c(12:11), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+
+plot(mds_mh[,1], mds_mh[,2], main='MDS (Manhattan)', col = FinalOdds2$GameResult + 25, pch = ".", cex = 7, xlab = "Dist1", ylab = "Dist2")
+legend("topright", legend=c("Tie", "Home", "Away")
+       ,col = c(25:27), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+```
+
+
+```{r, echo = F, results = T, warning=F, message=F}
+par(mfrow=c(1,2))
+# Plot Euclidean
+plot(mds_eu[,1], mds_eu[,2], main='MDS (Euclidean)', col = FinalOdds2$IsOver+11, pch = c("."), cex = 7, xlab = "Dist1", ylab = "Dist2")
+legend("topright", legend=c("Over", "Under")
+       ,col = c(12:11), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+
+plot(mds_eu[,1], mds_eu[,2], main='MDS (Euclidean)', col = FinalOdds2$GameResult + 25, pch = ".", cex = 7, xlab = "Dist1", ylab = "Dist2")
+legend("topright", legend=c("Tie", "Home", "Away")
+       ,col = c(25:27), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+# text(mds[,1],mds[,2],names(FinalOdds[,c(3:43),with=F]),cex = .75,pos=4)
+```
+
+
+**We observe very smilar result with PCA and MDS (Manhattan). The result of the MDS(Euclidean) may seam different but I would say there is no difference in seperatng classes both over/under  and game result**
+
+
+
+
+
+## PCA Analysis for 3 pairs
+
+```{r, echo = F, results = F, warning=F, message=F}
+# PCA
+cor(FinalOdds3[,c(4:43),with=F])
+PCA = princomp(FinalOdds3[,c(4:43),with=F],cor=T)
+```
+
+```{r, echo = F, results = T, warning=F, message=F}
+par(mfrow=c(1,1))
+plot(PCA)
+```
+
+```{r, echo = F, results = T, warning=F, message=F}
+summary(PCA)
+```
+
+```{r, echo = F, results = T, warning=F, message=F}
+par(mfrow=c(1,2))
+# Plot Over/Under
+plot(PCA$scores[,1],PCA$scores[,2],col=FinalOdds3$IsOver+11,pch=".",cex=7, xlab = "Comp1", ylab = "Comp2") 
+title("PCA (over/under)")
+legend("topright", legend=c("Over", "Under")
+       ,col = c(12:11), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+
+# Plot Game Result
+plot(PCA$scores[,1],PCA$scores[,2],col=FinalOdds3$GameResult+25,pch=".",cex=7, xlab = "Comp1", ylab = "Comp2") 
+title("PCA (Game Result)")
+legend("topright", legend=c("Tie", "Home", "Away")
+       ,col = c(25:27), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+
+
+# 3D PCA - over/under
+# plot3d(PCA$scores[,1:3],col=FinalOdds3$IsOver+11,pch=".",cex=7)
+# 3D PCA - game result
+# plot3d(PCA$scores[,1:3],col=FinalOdds3$GameResult+25,pch=".",cex=7)
+
+```
+
+
+## MDS Analysis for 3 pairs
+
+```{r, echo = F, results = T, warning=F, message=F}
+# Calculate Manhattan Distance
+Manhattan <- dist(FinalOdds3[,c(4:43),with=F], method = "manhattan", diag = TRUE, upper = TRUE)
+
+# Calculate Euclidean Distance
+Euclidean <- dist(FinalOdds3[,c(4:43),with=F], method = "euclidean", diag = TRUE, upper = TRUE)
+
+# Create MDS
+mds_mh = cmdscale(Manhattan)
+
+mds_eu = cmdscale(Euclidean)
+```
+
+```{r, echo = F, results = T, warning=F, message=F}
+# Plot Manhattan
+par(mfrow=c(1,2))
+plot(mds_mh[,1], mds_mh[,2], main='MDS (Manhattan)', col = FinalOdds3$IsOver + 11, pch = "." , cex = 7, xlab = "Dist1", ylab = "Dist2")
+legend("topright", legend=c("Over", "Under")
+       ,col = c(12:11), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+
+plot(mds_mh[,1], mds_mh[,2], main='MDS (Manhattan)', col = FinalOdds3$GameResult + 25, pch = ".", cex = 7, xlab = "Dist1", ylab = "Dist2")
+legend("topright", legend=c("Tie", "Home", "Away")
+       ,col = c(25:27), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+
+
+# Plot Euclidean
+par(mfrow=c(1,2))
+plot(mds_eu[,1], mds_eu[,2], main='MDS (Euclidean)', col = FinalOdds3$IsOver+11, pch = c("."), cex = 7, xlab = "Dist1", ylab = "Dist2")
+legend("topright", legend=c("Over", "Under")
+       ,col = c(12:11), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+
+plot(mds_eu[,1], mds_eu[,2], main='MDS (Euclidean)', col = FinalOdds3$GameResult + 25, pch = ".", cex = 7, xlab = "Dist1", ylab = "Dist2")
+legend("topright", legend=c("Tie", "Home", "Away")
+       ,col = c(25:27), pch = c("."), lwd = 2 ,bg = ("white"), horiz = F, cex = 0.7) 
+# text(mds[,1],mds[,2],names(FinalOdds[,c(3:43),with=F]),cex = .75,pos=4)
+
+```
+  
+**For this part, my comments are the same in general. However, I can add the 3rd pair, which is an assian handicap might be better in terms of seperating the end classes, because the graphs seems more seperated than the previous ones. Yet, I have to say that might be an ilussion due to less number of observations**
+
+
+#Task 3
+
+1 - Read Image
+
+```{r, echo = F, results = F, warning=F, message=F}
+pic <- readJPEG("pic.jpg")
+```
+
+2- Structure of the image is numeric
+
+```{r, echo = F, results = T, warning=F, message=F}
+str(pic)
+```
+
+And the size of the image is: 
+
+```{r, echo = F, results = T, warning=F, message=F}
+dim(pic)
+```
+
+Since we reshaped for 512-512 pixels and it is rgb colored image.
+
+And the image is the following:
+
+```{r, echo = F, results = T, warning=F, message=F}
+plot(0:5,0:5, type="n", ann=FALSE,axes=FALSE)
+rasterImage(pic,0,0,5,5)
+```
+
+And the rgb channels are the followings:
+
+```{r, echo = F, results = T, warning=F, message=F}
+par(mfrow=c(1,3))
+plot(0:5,0:5, type="n", ann=FALSE,axes=FALSE)
+rasterImage(pic[,,1],0,0,5,5)
+plot(0:5,0:5, type="n", ann=FALSE,axes=FALSE)
+rasterImage(pic[,,2],0,0,5,5)
+plot(0:5,0:5, type="n", ann=FALSE,axes=FALSE)
+rasterImage(pic[,,3],0,0,5,5)
+```
+
+
+3 - Noisy Image:
+
+```{r, echo = F, results = T, warning=F, message=F}
+
+noisy_pic <- pic + runif(512*512*3, 0, 0.1)
+
+# Set values grater than 1 to 1
+noisy_pic[noisy_pic > 1] <- 1
+
+plot(0:5,0:5, type="n", ann=FALSE,axes=FALSE)
+rasterImage(noisy_pic,0,0,5,5)
+
+```
+
+
+And the rgb channels of the noisy the followings:
+
+```{r, echo = F, results = T, warning=F, message=F}
+par(mfrow=c(1,3))
+plot(0:5,0:5, type="n", ann=FALSE,axes=FALSE)
+rasterImage(noisy_pic[,,1],0,0,5,5)
+plot(0:5,0:5, type="n", ann=FALSE,axes=FALSE)
+rasterImage(noisy_pic[,,2],0,0,5,5)
+plot(0:5,0:5, type="n", ann=FALSE,axes=FALSE)
+rasterImage(noisy_pic[,,3],0,0,5,5)
+```
+
+
+
+
+
+
