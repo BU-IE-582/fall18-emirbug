@@ -10,7 +10,7 @@
 
 ## Week 5 (October 26)
 
-[Here](http://htmlpreview.github.io/?https://github.com/BU-IE-582/fall18-emirbug/blob/master/files/Homework_2.html) is my PCA Analysis.
+[Here](files/Homework_2.html) is my PCA Analysis.
 
 
         
