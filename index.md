@@ -10,7 +10,7 @@
 
 ## Week 5 (October 26)
 
-[Here](files/Homework_2.html) is my Odd Analysis.
+[Here](files/Homework_2.html) is my PCA Analysis.
 
 
         
