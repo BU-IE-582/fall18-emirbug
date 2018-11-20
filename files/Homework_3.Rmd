@@ -11,7 +11,7 @@ output:
       collapsed: yes
 ---
 
-```{r, echo = F, warning = F}
+```{r, echo = F, warning = F, message=F}
 library(data.table)
 library("plot3D")
 library(penalized)
