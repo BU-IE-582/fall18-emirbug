@@ -1,0 +1,551 @@
+---
+title: "Homework 3"
+author: "Emirhan Bugday"
+date: "November 19, 2018"
+output:
+  html_document:
+    highlight: tango
+    theme: simplex
+    toc: yes
+    toc_float:
+      collapsed: yes
+---
+
+```{r, echo = F, warning = F}
+library(data.table)
+library("plot3D")
+library(penalized)
+
+# Set working directory and folder paths
+setwd("G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3")
+load("Q1-Final.RData")
+load("Q2-Final.RData")
+
+
+```
+
+## TASK 1
+
+### Task 1 - A {.tabset .tabset-fade}
+
+3D plots of the gestures are below (plot3D package is used to draw 3D plots of the instances, which represents 3D image in 2D).
+
+#### Gesture 1
+```{r echo= F}
+i <- 11
+instance <- data.table(Label = traindata_x[i,1], X_a = traindata_x[i,-1], Y_a = traindata_y[i,-1], Z_a = traindata_z[i,-1])
+
+# Calculate Position from accerelation
+instance[, X := cumsum(X_a)]
+instance[, Y := cumsum(Y_a)]
+instance[, Z := cumsum(Z_a)]
+
+points3D(x = instance$X, y = instance$Y, z = instance$Z, pch=".", cex=7)
+
+```
+
+#### Gesture 2
+```{r echo= F}
+i <- 15
+instance <- data.table(Label = traindata_x[i,1], X_a = traindata_x[i,-1], Y_a = traindata_y[i,-1], Z_a = traindata_z[i,-1])
+
+# Calculate Position from accerelation
+instance[, X := cumsum(X_a)]
+instance[, Y := cumsum(Y_a)]
+instance[, Z := cumsum(Z_a)]
+
+points3D(x = instance$X, y = instance$Y, z = instance$Z, pch=".", cex=7)
+
+```
+
+#### Gesture 3
+```{r echo= F}
+i <- 4
+instance <- data.table(Label = traindata_x[i,1], X_a = traindata_x[i,-1], Y_a = traindata_y[i,-1], Z_a = traindata_z[i,-1])
+
+# Calculate Position from accerelation
+instance[, X := cumsum(X_a)]
+instance[, Y := cumsum(Y_a)]
+instance[, Z := cumsum(Z_a)]
+
+points3D(x = instance$X, y = instance$Y, z = instance$Z, pch=".", cex=7)
+
+```
+
+#### Gesture 4
+```{r echo= F}
+i <- 5
+instance <- data.table(Label = traindata_x[i,1], X_a = traindata_x[i,-1], Y_a = traindata_y[i,-1], Z_a = traindata_z[i,-1])
+
+# Calculate Position from accerelation
+instance[, X := cumsum(X_a)]
+instance[, Y := cumsum(Y_a)]
+instance[, Z := cumsum(Z_a)]
+
+points3D(x = instance$X, y = instance$Y, z = instance$Z, pch=".", cex=7)
+
+```
+
+#### Gesture 5
+```{r echo= F}
+i <- 2
+instance <- data.table(Label = traindata_x[i,1], X_a = traindata_x[i,-1], Y_a = traindata_y[i,-1], Z_a = traindata_z[i,-1])
+
+# Calculate Position from accerelation
+instance[, X := cumsum(X_a)]
+instance[, Y := cumsum(Y_a)]
+instance[, Z := cumsum(Z_a)]
+
+points3D(x = instance$X, y = instance$Y, z = instance$Z, pch=".", cex=7)
+
+```
+
+#### Gesture 6
+```{r echo= F}
+i <- 1
+instance <- data.table(Label = traindata_x[i,1], X_a = traindata_x[i,-1], Y_a = traindata_y[i,-1], Z_a = traindata_z[i,-1])
+
+# Calculate Position from accerelation
+instance[, X := cumsum(X_a)]
+instance[, Y := cumsum(Y_a)]
+instance[, Z := cumsum(Z_a)]
+
+points3D(x = instance$X, y = instance$Y, z = instance$Z, pch=".", cex=7)
+
+```
+
+#### Gesture 7
+```{r echo= F}
+i <- 7
+instance <- data.table(Label = traindata_x[i,1], X_a = traindata_x[i,-1], Y_a = traindata_y[i,-1], Z_a = traindata_z[i,-1])
+
+# Calculate Position from accerelation
+instance[, X := cumsum(X_a)]
+instance[, Y := cumsum(Y_a)]
+instance[, Z := cumsum(Z_a)]
+
+points3D(x = instance$X, y = instance$Y, z = instance$Z, pch=".", cex=7)
+
+```
+
+#### Gesture 8
+```{r echo= F}
+i <- 6
+instance <- data.table(Label = traindata_x[i,1], X_a = traindata_x[i,-1], Y_a = traindata_y[i,-1], Z_a = traindata_z[i,-1])
+
+# Calculate Position from accerelation
+instance[, X := cumsum(X_a)]
+instance[, Y := cumsum(Y_a)]
+instance[, Z := cumsum(Z_a)]
+
+points3D(x = instance$X, y = instance$Y, z = instance$Z, pch=".", cex=7)
+
+```
+
+
+### Task 1 - B
+
+"Manhattan" & "Euclidean" distances along with k = 1, 3, 5, 7 is compared with 10 fold Cross Validation. 1 resampling is performed due to computational cost, however it would be more robust to select model parameters with more resampling. Since all predictors have the same unit, No pre-processing(normalization) is applied on data.
+
+As a result, "manhattan" distance with k = 1 provided has the best performance. More detailed output of the experiment is brovided below.
+
+```{r echo= F}
+# Print Details
+print(knnFit)
+
+# Plot the Result
+plot(knnFit)
+
+```
+
+### Task 1 - C
+**For "Manhattan" Distance with k = 1:** 
+
+Accuracy = 95.4%
+
+Computation Time = 41.75 sec
+
+& Confusion Matrix is as follows
+```{r echo= F}
+cm1
+```
+
+**For "Euclidean" Distance with k = 3:**
+
+Accuracy = 94.4%
+
+Computation Time = 4.88 sec
+
+& Confusion Matrix is as follows
+```{r echo= F}
+cm2
+```
+
+
+## TASK 2
+
+### Task 2 - A, B
+Logistic regression model with fusel lasso penalty is trained on the training data, via "penalized" package.
+
+lambda between 0 and 2 is tested for L1 penaltization on the differences of the coefficients while L1 penalization on the coefficients is set to 1 with 2 fold cross validation (2 fold is used due to computational costs)
+
+Best lambda is found as 0.31 & 23 features are selected among 96. Summary of the result is provided below.
+
+```{r echo= F}
+fusedLasso
+```
+
+**Accuracy** of the model on the test data is **82%** and
+
+**Confusion Matrix** is the following:
+```{r echo= F}
+T2_cm
+```
+
+Then, L1 penalization on the coefficients are optimized while lamda set for 0.31 for L1 penaltization on the differences of the coefficients. Results are provided below.
+```{r echo= F}
+fusedLasso_2
+```
+
+However, accuracy remained at **82%** and confusion matrix is stayed as the same.
+
+
+
+### Task 2 - C, D
+After the described time series transformation is applied, Logistic regression model with fusel lasso penalty is trained on the training data, via "penalized" package.
+
+lambda between 0 and 2 is tested for L1 penaltization on the differences of the coefficients while L1 penalization on the coefficients is set to 1 with 2 fold cross validation (2 fold is used due to computational costs)
+
+Best lambda is found as 0.19 & 18 features are selected among 95. Summary of the result is provided below.
+
+```{r echo= F}
+fusedLasso2
+```
+
+**Accuracy** of the model on the test data is **84%** and
+
+**Confusion Matrix** is the following:
+```{r echo= F}
+T2_cm_2
+```
+
+Then, L1 penalization on the coefficients are optimized while lamda set for 0.19 for L1 penaltization on the differences of the coefficients. Results are provided below.
+```{r echo= F}
+fusedLasso2_2
+```
+
+As a result Accuracy is increased to **85%** and confusion matrix become as follows:
+```{r echo= F}
+T2_cm2_2
+```
+
+However, the total number of selected features are increased to **33**. Thus, we can prefer lambda1 = 1 with **84%** accuracy in order to deal with a smaller feature dimension.
+
+To conclude, in the first setting we observe that 82% accuracy can be obtained 23/96 features and selecting addtional features among the originally provided ones doesn't contribut. On the other hand, with the described transformation- the second setting- slightly better accuracy can be achieved with even less features, 18/96.
+
+
+## APPENDIX
+Source code of Task 1 and Task 2
+
+### TASK 1
+```{r , eval = F, echo = T}
+# Clear connections, environment
+closeAllConnections()
+rm(list = ls())
+gc()
+
+# Load Neccesary Packages
+library(data.table)
+library(caret)
+library(tictoc)
+library(kknn)
+
+# Load Train Data
+fname='G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\UWave\\uWaveGestureLibrary_X_TRAIN' # data path
+traindata_x <- as.matrix(read.table(fname))  # read data into a matrix named traindata
+
+fname='G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\UWave\\uWaveGestureLibrary_Y_TRAIN' # data path
+traindata_y <- as.matrix(read.table(fname))  # read data into a matrix named traindata
+
+fname='G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\UWave\\uWaveGestureLibrary_Z_TRAIN' # data path
+traindata_z <- as.matrix(read.table(fname))  # read data into a matrix named traindata
+
+# Cbind Train Data and Change Column Names
+traindata <- cbind(traindata_x, traindata_y[,-1])
+traindata <- cbind(traindata, traindata_z[,-1])
+traindata<- as.data.table(traindata)
+names(traindata) <- as.character(c("gesture", 1:(dim(traindata)[2] - 1)))
+# names(traindata) <- as.character(c("gesture", paste0("V", 1:(dim(traindata)[2] - 1))))
+str(traindata)
+
+# Load Test Data
+fname='G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\UWave\\uWaveGestureLibrary_X_TEST' # data path
+testdata_x <- as.matrix(read.table(fname))  # read data into a matrix named traindata
+
+fname='G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\UWave\\uWaveGestureLibrary_Y_TEST' # data path
+testdata_y <- as.matrix(read.table(fname))  # read data into a matrix named traindata
+
+fname='G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\UWave\\uWaveGestureLibrary_Z_TEST' # data path
+testdata_z <- as.matrix(read.table(fname))  # read data into a matrix named traindata
+
+testdata <- cbind(testdata_x, testdata_y[,-1])
+testdata <- cbind(testdata, testdata_z[,-1])
+testdata<- as.data.table(testdata)
+names(testdata) <- as.character(c("gesture", 1:(dim(testdata)[2] - 1)))
+# names(testdata) <- as.character(c("gesture", paste0("V", 1:(dim(testdata)[2] - 1))))
+str(testdata)
+
+
+#1-A
+i <- 1
+instance <- data.table(Label = traindata_x[i,1], X_a = traindata_x[i,-1], Y_a = traindata_y[i,-1], Z_a = traindata_z[i,-1])
+
+# Calculate Position from accerelation
+instance[, X := cumsum(X_a)]
+instance[, Y := cumsum(Y_a)]
+instance[, Z := cumsum(Z_a)]
+
+par(mfrow=c(1,1))
+
+library("plot3D")
+points3D(x = instance$X, y = instance$Y, z = instance$Z, pch=".", cex=7)
+
+# library(rgl)
+# plot3d(x = instance$X, y = instance$Y, z = instance$Z, pch=".", cex=7)
+# plot3d(x = instance$X, y = instance$Y, z = instance$time, pch=".", cex=7)
+
+
+#1-B
+# For Classification
+traindata[, gesture := as.factor(gesture)]
+testdata[, gesture := as.factor(gesture)]
+
+# Create 10 fold CV data set
+fitControl <- trainControl(## 10-fold CV
+  method = "repeatedcv",
+  number = 10,
+  ## repeated ten times
+  repeats = 1)
+
+# Create Parameter grid to evaluate throught cross validation
+# Selected Distances: 1 - Manhattan, 2 - Euclidean
+# Tries k values: 1,3,5
+# kernel = "rectangular" corresponds standard unweighted knn (it is required for the package)
+knnGrid <-  expand.grid(kmax = c(1,3,5,8), distance = c(1,2), kernel = "rectangular")
+
+# Optimize parameters using the train data set
+knnFit <- train(gesture ~ ., data = traindata, 
+                method = "kknn", 
+                trControl = fitControl,
+                tuneGrid = knnGrid,
+                verbose = TRUE)
+
+saveRDS(knnFit, "G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\KnnFitQ1Final.Rds")
+
+# Plot the Result
+plot(knnFit)
+
+# Print Details
+print(knnFit)
+
+
+# 1-C
+
+tic("manhattan")
+prediction1 <-  kknn(gesture ~ ., 
+                     traindata, 
+                     testdata, 
+                     k = 1, 
+                     distance = 1, 
+                     kernel = "rectangular",
+                     # na.action = na.omit(),
+                     scale = FALSE)
+toc()
+
+result1 <- cbind(data.table(prediction = prediction1$fitted.values), data.table(actual = testdata$gesture))
+cm1 <- table(result1)
+accu1 <- sum(diag(cm1))/sum(cm1)
+
+tic("euclidean")
+prediction2 <-  kknn(gesture ~ ., 
+                     traindata, 
+                     testdata, 
+                     k = 3, 
+                     distance = 2, 
+                     kernel = "rectangular",
+                     # na.action = na.omit(),
+                     scale = FALSE)
+toc()
+
+result2 <- cbind(data.table(prediction = prediction2$fitted.values), data.table(actual = testdata$gesture))
+cm2 <- table(result2)
+accu2 <- sum(diag(cm2))/sum(cm2)
+
+
+save.image(file = "G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\Q1-Final.RData")
+
+
+```
+
+### TASK 2
+```{r , eval = F, echo = T}
+# Clear connections, environment
+closeAllConnections()
+rm(list = ls())
+gc()
+
+library(penalized)
+library(data.table)
+
+# Load Train Data
+fname='G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\NN_Classification\\ecgTRAIN' # data path
+traindata <- as.data.table(read.table(fname))  # read data into a matrix named traindata
+
+# Train Class Variable
+trainclass = traindata[, 1] # takes -1 and 1
+# Convert class variable to 0-1
+trainclass <- (trainclass + 1) / 2
+str(trainclass) 
+# Train Features
+traindata = traindata[, 2:ncol(traindata)]
+
+# Load Test Data
+fname='G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\NN_Classification\\ecgTEST' # data path
+testdata <- as.matrix(read.table(fname))  # read data into a matrix named traindata
+
+# Test Class Variable
+testclass = testdata[, 1]
+# Convert class variable to 0-1
+testclass <- (testclass + 1) / 2
+# Test Features
+testdata=testdata[, 2:ncol(testdata)]
+
+
+#4-A,B
+fusedLasso <- optL2(response = as.matrix(trainclass), 
+                    penalized = traindata, 
+                    unpenalized = ~ 0, 
+                    data = traindata,
+                    fusedl = T, 
+                    standardize = T, 
+                    lambda1 = 1, 
+                    minlambda2 = 0, 
+                    maxlambda2 = 2,
+                    fold = 2,
+                    model = "logistic")
+
+
+# pen <- penalized(response = as.matrix(trainclass),
+#                  penalized = traindata,
+#                  unpenalized = ~ 0,
+#                  data = traindata,
+#                  fusedl = T,
+#                  standardize = F,
+#                  lambda1 = 1,
+#                  lambda2 = fusedLasso$lambda,
+#                  model = "logistic",
+#                  trace = T)
+
+coef(fusedLasso$fullfit)
+
+T2_prediction <- predict(object =  fusedLasso$fullfit, as.matrix(testdata))
+
+T2_result <- cbind(data.table(prediction = round(T2_prediction, digit = 0)), data.table(actual = testclass))
+T2_cm <- table(T2_result)
+T2_accu <- sum(diag(T2_cm))/sum(T2_cm)
+
+
+fusedLasso_2 <- optL1(response = as.matrix(trainclass), 
+                    penalized = traindata, 
+                    unpenalized = ~ 0, 
+                    data = traindata,
+                    fusedl = T, 
+                    standardize = T, 
+                    lambda2 = fusedLasso$lambda, 
+                    minlambda1 = 0, 
+                    maxlambda1 = 2,
+                    fold = 2,
+                    model = "logistic")
+
+coef(fusedLasso_2$fullfit)
+
+T2_prediction_2 <- predict(object =  fusedLasso_2$fullfit, as.matrix(testdata))
+
+T2_result_2 <- cbind(data.table(prediction = round(T2_prediction_2, digit = 0)), data.table(actual = testclass))
+T2_cm_2 <- table(T2_result_2)
+T2_accu_2 <- sum(diag(T2_cm_2))/sum(T2_cm_2)
+
+
+# 4-C,D
+
+# Compute diff variables for train data
+traindata_2 <- as.data.table(traindata)
+traindata_2[,instance := c(1:.N)]
+traindata_2_2 <- melt(traindata_2,id.vars = "instance")
+traindata_2_2 <- traindata_2_2[order(instance, variable)]
+traindata_2_2[, value2 := value - shift(value, n = 1, type = "lag"), instance]
+traindata_2 <- dcast(traindata_2_2[!is.na(value2), .(instance, variable, value2)], formula = instance  ~ variable, value.var = "value2")
+traindata_2[, instance := NULL]
+
+summary(traindata_2)
+
+# Compute diff variables for test data
+testdata_2 <- as.data.table(testdata)
+testdata_2[,instance := c(1:.N)]
+testdata_2_2 <- melt(testdata_2,id.vars = "instance")
+testdata_2_2 <- testdata_2_2[order(instance, variable)]
+testdata_2_2[, value2 := value - shift(value, n = 1, type = "lag"), instance]
+testdata_2 <- dcast(testdata_2_2[!is.na(value2), .(instance, variable, value2)], formula = instance  ~ variable, value.var = "value2")
+testdata_2[, instance := NULL]
+
+summary(testdata_2)
+
+
+fusedLasso2 <- optL2(response = as.matrix(trainclass), 
+                    penalized = traindata_2, 
+                    unpenalized = ~ 0, 
+                    data = traindata_2,
+                    fusedl = T, 
+                    standardize = T, 
+                    lambda1 = 1, 
+                    minlambda2 = 0, 
+                    maxlambda2 = 2,
+                    fold = 2,
+                    model = "logistic")
+
+
+
+coef(fusedLasso2$fullfit)
+
+T2_prediction2 <- predict(object = fusedLasso2$fullfit, as.matrix(testdata_2))
+
+T2_result2 <- cbind(data.table(prediction = round(T2_prediction2, digit = 0)), data.table(actual = testclass))
+T2_cm2 <- table(T2_result2)
+T2_accu2 <- sum(diag(T2_cm2))/sum(T2_cm2)
+
+fusedLasso2$lambda
+
+
+
+fusedLasso2_2 <- optL1(response = as.matrix(trainclass), 
+                       penalized = traindata_2, 
+                       unpenalized = ~ 0, 
+                       data = traindata_2,
+                       fusedl = T, 
+                       standardize = T, 
+                       lambda2 = fusedLasso2$lambda, 
+                       minlambda1 = 0, 
+                       maxlambda1 = 2,
+                       fold = 2,
+                       model = "logistic")
+
+T2_prediction2_2 <- predict(object = fusedLasso2_2$fullfit, as.matrix(testdata_2))
+
+T2_result2_2 <- cbind(data.table(prediction = round(T2_prediction2_2, digit = 0)), data.table(actual = testclass))
+T2_cm2_2 <- table(T2_result2_2)
+T2_accu2_2 <- sum(diag(T2_cm2_2))/sum(T2_cm2_2)
+
+save.image(file = "G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-3\\Q2-Final.RData")
+
+
+```
