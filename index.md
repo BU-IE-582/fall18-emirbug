@@ -12,6 +12,10 @@
 
 [Here](files/Homework_2.html) is my PCA Analysis.
 
+## Week 9 (November 19)
+
+[Here](files/Homework_3.html) is my Homework 3.
+
 
         
       
