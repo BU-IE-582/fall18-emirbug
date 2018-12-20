@@ -64,11 +64,11 @@ This data approach student achievement in secondary education of two Portuguese 
 
 6 Pstatus - parent's cohabitation status (binary: 'T' - living together or 'A' - apart) 
 
-7 Medu - mother's education (numeric: 0 - none, 1 - primary education (4th grade), 2 ‚???" 5th to 9th grade, 3 ‚???" secondary 
-education or 4 ‚???" higher education) 
+7 Medu - mother's education (numeric: 0 - none, 1 - primary education (4th grade), 2 √¢???" 5th to 9th grade, 3 √¢???" secondary 
+education or 4 √¢???" higher education) 
 
-8 Fedu - father's education (numeric: 0 - none, 1 - primary education (4th grade), 2 ‚???" 5th to 9th grade, 3 ‚???" secondary 
-education or 4 ‚???" higher education) 
+8 Fedu - father's education (numeric: 0 - none, 1 - primary education (4th grade), 2 √¢???" 5th to 9th grade, 3 √¢???" secondary 
+education or 4 √¢???" higher education) 
 
 9 Mjob - mother's job (nominal: 'teacher', 'health' care related, civil 'services' (e.g. administrative or police), 'at_home' or 'other') 
 
@@ -296,7 +296,7 @@ WP$	Frequency of possessive WH-pronouns
 
 WRB	Frequency of WH-adverbs 
 
-baseform	Frequency of infinitive verbs (base form verbs preceded by ‚???oto‚???ù) 
+baseform	Frequency of infinitive verbs (base form verbs preceded by √¢???oto√¢???¬ù) 
 
 Quotes	Frequency of quotation pairs in the entire article 
 
