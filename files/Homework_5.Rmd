@@ -1,0 +1,318 @@
+---
+title: "Homework 5"
+author: "Emirhan Bugday"
+date: "January 07, 2019"
+output:
+  html_document:
+    highlight: tango
+    theme: simplex
+    toc: yes
+    toc_float:
+      collapsed: yes
+---
+
+```{r, echo = F, warning = F, message=F}
+library(data.table)
+library(caret)
+library(ROCR)
+library(kmed)
+
+
+# Set working directory and folder paths
+setwd("G:/My Drive/Z.ME/Boun/IE 582/HW-5")
+
+
+```
+
+## Methodology 
+
+1 - Create Distance matrix for the features of the instances with using the given distance method method (Euclidean and Manhattan)
+
+2 - Apply clustering algorithms (k-medoids: kmed and Hierarchical: hclust(using ward.D2 method))
+
+3 - Calculate distances of the instances to the cluster centroids
+
+4 - Create new bag feature vectors
+
+5 - Evaluate clustering performance w.r.t user defined bag purity
+
+  * *purity:* sum of the maximum percentages of the bag instances labeled in a cluster
+
+
+6 - Create 10 folds 
+
+  * Stratification w.r.t. bag class is taken into consideration
+
+7 - Apply LASSO regression for each fold
+
+  * Parameter Tunning for lambda is performed for each model training with additional 10 fold cv and 2 resampling 
+  
+  * random seed is set for each fold acros the methods to ensure the resamplings will be the same for each model
+  
+8 - Calculate test performance for each fold
+
+9 - Calculate ROC
+
+10 - Calculate mean values of the folds 
+
+
+
+## Results
+
+
+### Purity measures of the classificatios
+
+```{r echo = F}
+
+# Plot the Result
+load("run.RData")
+
+testPerformances[, .(Purity = min(Purity)), ModelName]
+
+```
+
+### Overall Test Performance of the Methods w.r.t folds (After Parameter(lambda) Tuning)
+
+```{r echo = F}
+
+testPerformances[, .(Accuracy = mean(Accuracy), ROC = mean(ROC)), ModelName]
+
+```
+
+
+### Student Performance {.tabset .tabset-fade}
+
+## Summary
+
+a) 10 fold cv is applied for 92 bag representations constructed by 12 methods: {k-moids, hierarchical} $\times$ {euclidean, manhattan} $\times$ {3, 5 and 10 clusters}
+
+b) For each fold, lambda is optimized using 10 fold cv with 2 resampling, then test predictions made with the best lambda obtained. (So at total 240 LASSO regression is trained:  10 folds $\times$ 12 methods $\times$ 10 cv parameter tuning $\times$ 2 resampling)
+
+
+c) Evaluation of the clustering approaches is done by the defined purity measure. According to the results, 3 clusters constructed with hierarchical clustering using euclidean distance has a better purity metric.
+
+b) As a result of the 10 fold experiment, hierarchical clustering, 10 clusters and euclidean distance has provided the best performance in terms of the bag-level representation for classifying bags.
+
+Source codes are provided in the appendix (When the provide code is run, parameter tuning results, and purity calculations are printed at each iteration.
+
+## Appendix
+
+
+```{r echo = T, eval = F}
+rm(list = ls())
+setwd("G:/My Drive/Z.ME/Boun/IE 582/HW-5")
+
+library(data.table)
+library(caret)
+library(ROCR)
+library(kmed)
+
+# Load Data
+data <- fread(file = "Musk1.csv")
+# summary(data)
+# str(data)
+# names(data) 
+
+# Create Instance_Id
+data[, Id := c(1:.N)]
+
+
+# Experiment Variables
+modelObjects <- list()
+testPerformances <- data.table()
+
+
+for (clustering_method in c("kmoid", "hierarchical")) {
+
+  for (number_of_clusters in c(3,5,10)) {
+
+      for (distance_method in c("euclidean", "manhattan")) {
+
+        print(paste(clustering_method, "clustering with", number_of_clusters, "clusters using", distance_method ))
+        
+        # Create Distance matrix for the features of the instances with using the given distance method method
+        distance_data <- dist(x = data[,3:168], method = distance_method)
+        # summary(distance_data)
+        # str(distance_data)
+        
+        if (clustering_method == "kmoid") {
+          
+          # Apply k-medoids
+          k_medoid_cluster <- fastkmed(distdata = distance_data, ncluster = number_of_clusters, iterate = 50)
+          # summary(k_medoid_cluster)
+          
+          # Get distances of the instances to the cluster medoids
+          cluster_instance_distance <- as.matrix(distance_data)[k_medoid_cluster$medoid,]
+          
+        } else {
+          
+          # Apply hierarchical clustering
+          hc_cluster <- hclust(distance_data, method = "ward.D2")
+          
+          # Mark instance clusters
+          data[, hc_cluster := cutree(hc_cluster, k = number_of_clusters)]
+          
+          # Find clusters centers
+          centroids <- data[, lapply(.SD[, -c("V1", "V2", "Id"), with = F], mean), hc_cluster]
+          
+          temp_dist <- dist(rbind(centroids[,2:167], data[,3:168]), method = distance_method)
+          cluster_instance_distance <- as.matrix(temp_dist)[1:number_of_clusters, (number_of_clusters + 1) : (476 + number_of_clusters)]
+          
+          # Remove temp variables
+          data[, hc_cluster := NULL]
+          rm(list = c("centroids", "temp_dist"))
+          
+        }
+        
+        # Create an empty data to collet obtained bag vectors
+        new_data <- data.table()
+        
+        # Create a variable to measure cluster performance
+        cluster_purity <- 0
+        
+        # Find new feature vector of the bags
+        for (bag_id in sort(unique(data$V2))) {
+          
+          # Get instance ids for the corresponding bags
+          bag_instances <- data[V2 == bag_id]$Id
+          
+          # Get instance distances to the cluster medoids
+          bag_instance_medoid_distances <- as.data.table(cluster_instance_distance[,bag_instances])
+          
+          # Obtain bag feature vector
+          bag_feature_vector <- rowMeans(bag_instance_medoid_distances)
+          
+          # Obtain bag class
+          bag_class <- mean(data[V2 == bag_id]$V1)
+          
+          # Create and record new bag vector
+          bag_vector <- cbind(bag_class, bag_id, t(bag_feature_vector))
+          new_data <- rbind(new_data, bag_vector)
+          
+          # Evaluate clustering performance w.r.t bag purity 
+          
+          # Firt get the clusters that the instances of the bag belong
+          if (clustering_method == "kmoid") {
+            
+            cluster_occurance <- table(as.matrix(k_medoid_cluster$cluster)[bag_instances])
+            
+          } else  {
+            
+            cluster_occurance <- table(as.matrix(cutree(hc_cluster, k = number_of_clusters))[bag_instances])
+          }
+          
+          
+          # Then, calculate and record the bag purity 
+          bag_cluster_purity <- max(cluster_occurance)/sum(cluster_occurance)
+          cluster_purity <- cluster_purity + bag_cluster_purity
+        }
+        
+        print(paste0("Purity measure: ", round(cluster_purity / 92, digits = 2)))
+      
+     
+        # Lasso classification
+        new_data$bag_class <- as.factor(new_data$bag_class)
+        # new_data[bag_class == 0, bag_class := "false"]
+        # new_data[bag_class == 1, bag_class := "true"]
+        levels(new_data$bag_class) <- c("first_class", "second_class")
+        
+        
+        # Set Random Seed to ensure the resamplings and folds will be the same for each iteration
+        set.seed(7)
+        
+        # Create Folds for robust test performance
+        nFold <- 10
+        
+        # Take stratification into consideration while splitting
+        folds <- createDataPartition(new_data$bag_class, p = 0.9, list = FALSE, times = nFold)
+        # head(folds)
+        
+        # Do experiment for 10 folds
+        for (f in c(1:10)) {
+          
+        # Create Test/Train Data sets
+        training <- new_data[folds[,f], -"bag_id"]
+        testing <- new_data[-folds[,f], -"bag_id"]
+        
+        # Define Train CV and Resampling parametes
+        fitControl <- trainControl( method = "repeatedcv",
+                                    ## 10-fold CV
+                                    number = 10,
+                                    classProbs = TRUE,
+                                    ## repeated 2 times
+                                    repeats = 2,
+                                    summaryFunction = twoClassSummary)
+        
+        
+        # Parameter selection for PRA model 
+        lassoGrid <-  expand.grid(alpha = 1, # To use lasso penalty
+                                  lambda = seq(0.01,0.3,0.05))
+        
+        
+        # LASSO Train and Parameter Tuning
+        Fit <- train(bag_class ~ ., data = training, 
+                     method = "glmnet", 
+                     trControl = fitControl,
+                     tuneGrid = lassoGrid,
+                     metric = "ROC")
+        
+        # Save the model                
+        experiment_name <- paste0(clustering_method, "_", number_of_clusters, "_", distance_method)
+        modelObjects[[experiment_name]][[f]] <- Fit
+        
+        Fit$bestTune
+        
+        plot(Fit)
+        
+        # Predictions for the fold
+        Prediction <- predict.train(Fit, newdata = testing)
+        
+        # Test Metrics
+        testResult <- postResample(pred = Prediction, obs = testing$bag_class)
+      
+        
+        # Subtract train performance
+        str <- "as.data.table(Fit$results)["
+        i <- 1
+        N <- length(names(Fit$finalModel$tuneValue))
+        for (n in names(Fit$finalModel$tuneValue)) {
+          
+          str <- paste0(str, "round(", n, ", digits = 2) == ", Fit$finalModel$tuneValue[[n]])
+          
+          if (i < N) {
+            str <- paste0(str, " & ")
+            
+          }
+          i <- i + 1
+          
+        }
+        str <- paste0(str, "]")
+        
+        trainPerformance <- eval(expr = parse(text = str))
+        
+        # print(paste0("Fold ", f, ", Selected lambda:"))
+        # print(trainPerformance$ROC)
+        # 
+        # print("ROC:")
+        # print(trainPerformance$ROC)
+        
+        # Save the test metrics
+        testPerformances <- rbind(testPerformances, cbind(data.table(ModelName = experiment_name,
+                                                                     Purity = cluster_purity/92,
+                                                                     Fold = f, data.table(t(testResult)),
+                                                                     Selected_Lambda = trainPerformance$lambda,
+                                                                     ROC = trainPerformance$ROC
+                                                                     )))
+                                  
+        }                          
+
+    }
+
+  }
+
+}
+
+save.image(file = "G:\\My Drive\\Z.ME\\Boun\\IE 582\\HW-5\\run.RData")
+
+
+```
